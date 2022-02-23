@@ -1,0 +1,69 @@
+server:
+  port: 9091
+
+spring:
+  application:
+    name: proxy-kafka-jms
+
+artemis:
+  broker-password: ${JMS_BROKER_PASSWORD:admin}
+  broker-url: ${JMS_BROKER_URL:tcp://127.0.0.1:61616}
+  broker-username: ${JMS_BROKER_USERNAME:admin}
+
+logging:
+  level:
+    ROOT: INFO
+
+camel:
+  springboot:
+    main-run-controller: true
+  component:
+    activemq:
+      error-handler-logging-level: INFO
+      error-handler-log-stack-trace: true
+      broker-url: ${JMS_BROKER_URL:tcp://127.0.0.1:61616}
+      password: ${JMS_BROKER_PASSWORD:admin}
+      trust-all-packages: true
+      username: ${JMS_BROKER_USERNAME:admin}
+      lazy-create-transaction-manager: true
+      accept-messages-while-stopping: true
+      transacted: true
+      connection-factory: ActiveMQConnectionFactory
+      transaction-manager: JmsTransactionManager
+      acknowledgement-mode-name: CLIENT_ACKNOWLEDGE
+    kafka:
+      security-protocol: SASL_PLAINTEXT
+      sasl-mechanism: PLAIN
+      sasl-jaas-config: ${KAFKA_SASL_JAAS:org.apache.kafka.common.security.plain.PlainLoginModule required username=admin password=admin-secret;}
+      bridge-error-handler: true
+      brokers: ${KAFKA_BROKER_URL:127.0.0.1:9092}
+      request-required-acks: all
+      enable-idempotence: true
+      max-in-flight-request: 1
+      retries: 5
+      auto-commit-enable: false
+      auto-offset-reset: earliest
+      group-id: proxy-kafka-jms
+      allow-manual-commit: true
+      break-on-first-error: true
+      valueSerializer: io.cloudevents.kafka.CloudEventSerializer
+      valueDeserializer : io.cloudevents.kafka.CloudEventDeserializer
+
+source-destination-config:
+  jmsToKafkaQueueTopicPairs:
+    - queue: jsonSourceQueue
+      topic: topic1FromJsonSourceQueue
+    - queue: jsonReceiverQueue
+      topic: topic2FromJSONSourceQueue
+    - queue: xmlSourceQueue
+      topic: topic1FromXMLSourceQueue
+    - queue: xmlReceiverQueue
+      topic: topic2FromXMLSourceQueue
+
+  kafkaToJmsQueueTopicPairs:
+    - topic: topic1FromXMLSourceQueue
+      queue: xmlReceiverQueue
+    - topic: topic1FromJsonSourceQueue
+      queue: jsonReceiverQueue
+
+#todo: add conf event source
