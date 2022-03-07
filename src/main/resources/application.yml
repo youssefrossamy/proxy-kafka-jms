@@ -12,7 +12,7 @@ artemis:
 
 logging:
   level:
-    ROOT: INFO
+    ROOT: DEBUG
 
 camel:
   springboot:
@@ -32,9 +32,10 @@ camel:
       transaction-manager: JmsTransactionManager
       acknowledgement-mode-name: CLIENT_ACKNOWLEDGE
     kafka:
-      security-protocol: SASL_PLAINTEXT
-      sasl-mechanism: PLAIN
-      sasl-jaas-config: ${KAFKA_SASL_JAAS:org.apache.kafka.common.security.plain.PlainLoginModule required username=admin password=admin-secret;}
+      schema-registry-u-r-l: ${KAFKA_SCHEMA_REGISTRY_URL:http://127.0.0.1:8081}
+#      security-protocol: SASL_PLAINTEXT
+#      sasl-mechanism: PLAIN
+#      sasl-jaas-config: ${KAFKA_SASL_JAAS:org.apache.kafka.common.security.plain.PlainLoginModule required username=admin password=admin-secret;}
       bridge-error-handler: true
       brokers: ${KAFKA_BROKER_URL:127.0.0.1:9092}
       request-required-acks: all
@@ -48,22 +49,59 @@ camel:
       break-on-first-error: true
       valueSerializer: io.cloudevents.kafka.CloudEventSerializer
       valueDeserializer : io.cloudevents.kafka.CloudEventDeserializer
+#      valueSerializer: ma.cdgk.integration.camel.serde.KafkaJmsProxySerializer
+#      valueDeserializer: ma.cdgk.integration.camel.serde.KafkaJmsProxyDeserializer
 
 source-destination-config:
   jmsToKafkaQueueTopicPairs:
     - queue: jsonSourceQueue
       topic: topic1FromJsonSourceQueue
-    - queue: jsonReceiverQueue
-      topic: topic2FromJSONSourceQueue
-    - queue: xmlSourceQueue
-      topic: topic1FromXMLSourceQueue
-    - queue: xmlReceiverQueue
-      topic: topic2FromXMLSourceQueue
+      queueFormat: json
+      queueMappingClass: ma.cdgk.integration.model.Event #Eventjson
+      normalizer: ma.cdgk.integration.normalizer.AmortissementCreditNormalizer
+      topicMappingClass: ma.cdgk.integration.model.Event #avroType #tjr
+      topicFormat: CloudEvent #tjr
+      #Service mapping
+      source-systeme: calyps #tjr
+      destination-source: oly
+      mongo-journaly: true #tjr
+#    - queue: xmlSourceQueue
+#      topic: topic1FromXMLSourceQueue
+#      topicFormat: CloudEvent #tjr
+#      queueFormat: xml
+#      topicMappingClass: Event2 # avroType #tjr
+#      queueMappingClass: Event
+#      #Service mapping
+#      source-systeme: calyps #tjr
+#      destination-source: oly
+#      mongo-journaly: true #tjr
 
-  kafkaToJmsQueueTopicPairs:
-    - topic: topic1FromXMLSourceQueue
-      queue: xmlReceiverQueue
-    - topic: topic1FromJsonSourceQueue
-      queue: jsonReceiverQueue
-
+#  kafkaToJmsQueueTopicPairs:
+#    - topic: topic1FromXMLSourceQueue_
+#      queue: xmlReceiverQueue
+#      topicFormat: json #should be always CloudEvent ?
+#      queueFormat: xml
+#      topicMappingClass: Event
+#      queueMappingClass: Event
+#      #Service mapping
+#      source-systeme: oly
+#      destination-source: test
+#      mongo-journaly: false
+#    - topic: topic1FromJsonSourceQueue
+#      queue: jsonReceiverQueue
+#      topicFormat: json
+#      queueFormat: json
+#      topicMappingClass: Event
+#      queueMappingClass: Event
+#      #Service mapping
+#      source-systeme: oly
+#      destination-source: test
+#      mongo-journaly: false
 #todo: add conf event source
+
+service-config:
+  systeme-source: calypso
+
+
+#      topicFormat: json , cloudEvent ,avro
+#      queueFormat: json ,xml

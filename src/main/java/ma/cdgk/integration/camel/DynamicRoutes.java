@@ -2,6 +2,7 @@ package ma.cdgk.integration.camel;
 
 import com.mongodb.DBObject;
 import ma.cdgk.integration.camel.processor.JmsToKafkaProcessor;
+import ma.cdgk.integration.camel.processor.JmsToMongoProcessor;
 import ma.cdgk.integration.camel.processor.KafkaToJmsProcessor;
 import ma.cdgk.integration.camel.processor.KafkaToMongoProcessor;
 import ma.cdgk.integration.common.SourceDestinationConfig;
@@ -30,7 +31,7 @@ public class DynamicRoutes extends RouteBuilder {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRoutes.class);
 
     final SourceDestinationConfig sourceDestinationConfig;
-
+    JmsToKafkaProcessor jmsToKafkaProcessor;
 
     public DynamicRoutes(SourceDestinationConfig sourceDestinationConfig) {
         this.sourceDestinationConfig = sourceDestinationConfig;
@@ -40,9 +41,9 @@ public class DynamicRoutes extends RouteBuilder {
     public void configure() throws JAXBException {
         routesErrorHandler();
         jmsToKafkaRoutes();
-        kafkaToJmsRoutes();
-        kafkaToMongoRoute();
-        //TODO : add routeo to manage event strore jms to mongo
+        JmsToMongoRoute();
+//        kafkaToJmsRoutes();
+//        kafkaToMongoRoute();
     }
 
     private void routesErrorHandler() {
@@ -65,41 +66,46 @@ public class DynamicRoutes extends RouteBuilder {
 
     private void jmsToKafkaRoutes() throws JAXBException {
         JaxbDataFormat jaxb = getJaxbDataFormat();
-        sourceDestinationConfig.getJmsToKafkaQueueTopicPairs().forEach(queueTopicPair -> {
+        sourceDestinationConfig.getJmsToKafkaQueueTopicPairs()
+                .forEach(queueTopicPair -> {
                     from("activemq:" + queueTopicPair.getQueue())
                             .routeId("from ".concat(queueTopicPair.getQueue().concat(" to ").concat(queueTopicPair.getTopic())))
                             .transacted()
                             .log("Start reading from queue ${header.JMSDestination.name}")
                             .choice()
-                            .when( simple("${header.JMSDestination.name} in '"+ getQueuesNamesByFormat("xml")+"' ")) //queueFormat
+                            .when( exchange -> queueTopicPair.getQueueFormat().equals("xml")) //
                                 .description("Use this route when the headers contain a header property called test with the value true")
                                 .log(LoggingLevel.INFO, "XML :: Start Processing message from queue - " + queueTopicPair.getQueue() + " - into topic -" + queueTopicPair.getTopic()+"- for data: \n ${body}")
                                 .unmarshal(jaxb)
-                                .removeHeaders("JMS*")
-                                .process(new JmsToKafkaProcessor())
+                                .process("jmsToKafkaProcessor")
 //                                // activate to test activemq resilience : tested
 //                                .process(exchange -> {
 //                                    if ("camelreceiver".equals(queueTopicPair.getQueue()))
 //                                        throw new RuntimeException(":::::::::: addJmsToKafkaRoutes exception befor sending to " + queueTopicPair.getTopic());
 //                                })
-//                                .to("seda:async-transfers") async : create new thread for async
+                                .removeHeaders("JMS*")
                                 .to("kafka:" + queueTopicPair.getTopic())
-                            .when(simple("${header.JMSDestination.name} in '"+ getQueuesNamesByFormat("json")+"' "))
+                            .endChoice()
+                            .when( exchange -> queueTopicPair.getQueueFormat().equals("json")) //queueFormat
                                 .description("Use this route when the headers contain a header property called test with the value true")
                                 .log(LoggingLevel.INFO, "JSON :: Start Processing message from queue - " + queueTopicPair.getQueue() + " - into topic -" + queueTopicPair.getTopic()+"- for data: \n ${body}")
                                 .unmarshal().json(JsonLibrary.Jackson ,Event.class)
                                 .removeHeaders("JMS*")
-                                .process(new JmsToKafkaProcessor())
+                                .process("jmsToKafkaProcessor")
                                     // activate to test activemq resilience : tested
 //                                    .process(exchange -> {
 //                                        if ("camelreceiverJSON".equals(queueTopicPair.getQueue()))
 //                                            throw new RuntimeException(":::::::::: addJmsToKafkaRoutes exception befor sending to " + queueTopicPair.getTopic());
 //                                    })
+                                .removeHeaders("JMS*")
                                 .to("kafka:" + queueTopicPair.getTopic())
+                            .endChoice()
                             .otherwise()
                                 .log(LoggingLevel.INFO, "!!!!!!!!!!!!!!! No route provided !!!!!!!!!!!!!!!")
                             .endChoice()
                             .end()
+                            //info: works well
+                                .wireTap(Boolean.parseBoolean(queueTopicPair.getMongoJournaly())?"direct:JmsToMongo":"log:JmsToMongo")
                             .log(LoggingLevel.INFO, "END Processing message from queue - " + queueTopicPair.getQueue() + " - into topic - " + queueTopicPair.getTopic()+" -");
                 }
         );
@@ -113,7 +119,7 @@ public class DynamicRoutes extends RouteBuilder {
                                 .log(LoggingLevel.INFO, "Start Processing message from topic - " + queueTopicPair.getTopic() + " - into queue -" + queueTopicPair.getQueue()+"- for data: \n ${body}")
                                 .log(LoggingLevel.INFO, "topic name ${header.kafka.TOPIC}")
                                 //todo: routage
-                                .process(new KafkaToJmsProcessor())
+                                .process(new KafkaToJmsProcessor(queueTopicPair))
                                 // activate to test KAFKA resilience : tested
 //                                .process(exchange -> {
 //                                    if ("jmstokafka".equals(queueTopicPair.getTopic()))
@@ -140,7 +146,7 @@ public class DynamicRoutes extends RouteBuilder {
 //                                       throw new RuntimeException(":::::::::: addkafkakaToJMSRoutes exception before sending to " + queueTopicPair.getTopic());
 //                                })
                                 .process(this::commitOffsetsManually)
-                                .wireTap("direct:mongo")
+                                    .wireTap(Boolean.parseBoolean(queueTopicPair.getMongoJournaly())?"direct:kafkaToMongo":"log:kafkaToMongo")
                                 .log(LoggingLevel.INFO, "END Processing message from topic " + queueTopicPair.getTopic() + ": to queue " + queueTopicPair.getQueue())
         );
     }
@@ -154,16 +160,16 @@ public class DynamicRoutes extends RouteBuilder {
             }
     }
 
-    private void kafkaToMongoRoute() throws JAXBException {
+    private void kafkaToMongoRoute(){
         LOGGER.info("kafka to mongo route");
-              from("direct:mongo" )
+              from("direct:kafkaToMongo" )
                       .routeId("from kafka to event store")
-                        .log(LoggingLevel.INFO, "Start Processing message from topic - ${header.kafka.TOPIC} - into event store  for data: \n ${body}")
+                        .log(LoggingLevel.INFO, "Journalization: Start Processing message into event store  for data: \n ${body}")
                       .process(new KafkaToMongoProcessor())
                       // activate to test KAFKA resilience : tested
-                      .process(exchange -> {
-                              throw new RuntimeException("resilience test :::::::::: mongo test ");
-                      })
+//                      .process(exchange -> {
+//                              throw new RuntimeException("resilience test :::::::::: mongo test ");
+//                      })
                       .to("mongodb:http//localhost:27017?database=event_store&collection=event&operation=save")
                       .transacted()
                       // activate to test activemq resilience :
@@ -171,8 +177,27 @@ public class DynamicRoutes extends RouteBuilder {
 //                            throw new RuntimeException("resilience test :::::::::: mongo test ");
 //                      })
                       .end()
-                    //  .process(this::commitOffsetsManually)
                       .log(LoggingLevel.INFO, "END Processing message from topic to event store");
+    }
+
+    private void JmsToMongoRoute(){
+        LOGGER.info("JMS to mongo route");
+              from("direct:JmsToMongo" )
+                      .routeId("from Jms to event store")
+                        .log(LoggingLevel.INFO, "Journalization: Start Processing message into event store for data: \n ${body}")
+                      .process("jmsToMongoProcessor")
+                      // activate to test resilience : tested
+//                      .process(exchange -> {
+//                              throw new RuntimeException("resilience test :::::::::: mongo test ");
+//                      })
+                      .to("mongodb:http//localhost:27017?database=event_store&collection=event&operation=save")
+                      .transacted()
+                      // activate to test activemq resilience :
+//                      .process(exchange -> {
+//                            throw new RuntimeException("resilience test :::::::::: mongo test ");
+//                      })
+                      .end()
+                      .log(LoggingLevel.INFO, "END Processing message from queue to event store");
     }
 
     private JaxbDataFormat getJaxbDataFormat() throws JAXBException {
