@@ -12,7 +12,12 @@ artemis:
 
 logging:
   level:
-    ROOT: DEBUG
+    ROOT: INFO
+
+mongo:
+  url: http//localhost:27017
+  database: event_store
+  collection: event
 
 camel:
   springboot:
@@ -56,47 +61,29 @@ source-destination-config:
   jmsToKafkaQueueTopicPairs:
     - queue: jsonSourceQueue
       topic: topic1FromJsonSourceQueue
-      queueFormat: json
+      queueFormat: xml
       queueMappingClass: ma.cdgk.integration.model.Event #Eventjson
       normalizer: ma.cdgk.integration.normalizer.AmortissementCreditNormalizer
-      topicMappingClass: ma.cdgk.integration.model.Event #avroType #tjr
       topicFormat: CloudEvent #tjr
+      topicMappingClass: ma.cdgk.integration.model.Event #avroType #tjr
       #Service mapping
       source-systeme: calyps #tjr
       destination-source: oly
       mongo-journaly: true #tjr
-#    - queue: xmlSourceQueue
-#      topic: topic1FromXMLSourceQueue
-#      topicFormat: CloudEvent #tjr
-#      queueFormat: xml
-#      topicMappingClass: Event2 # avroType #tjr
-#      queueMappingClass: Event
-#      #Service mapping
-#      source-systeme: calyps #tjr
-#      destination-source: oly
-#      mongo-journaly: true #tjr
 
-#  kafkaToJmsQueueTopicPairs:
-#    - topic: topic1FromXMLSourceQueue_
-#      queue: xmlReceiverQueue
-#      topicFormat: json #should be always CloudEvent ?
-#      queueFormat: xml
-#      topicMappingClass: Event
-#      queueMappingClass: Event
-#      #Service mapping
-#      source-systeme: oly
-#      destination-source: test
-#      mongo-journaly: false
-#    - topic: topic1FromJsonSourceQueue
-#      queue: jsonReceiverQueue
-#      topicFormat: json
-#      queueFormat: json
-#      topicMappingClass: Event
-#      queueMappingClass: Event
-#      #Service mapping
-#      source-systeme: oly
-#      destination-source: test
-#      mongo-journaly: false
+  kafkaToJmsQueueTopicPairs:
+    - topic: topic1FromJsonSourceQueue
+      queue: jsonReceiverQueue
+      queueFormat: json #xml
+      #queueMappingClass: ma.cdk.inetgartion.calypso.domain.Amortissement
+      queueMappingClass: ma.cdgk.domain.events.bancaire.AmortissementCreditEvent
+      topicFormat: CloudEvent
+      topicMappingClass: ma.cdgk.domain.events.bancaire.AmortissementCreditEvent
+      xmlMapper: ma.cdgk.integration.camel.mapping.MapAmortissementCreditEventToXmlAmortissement
+      jsonMapper: ma.cdgk.integration.camel.mapping.MapAmortissementCreditEventToAmortissement
+      source-systeme: oly
+      destination-source: calypso
+      mongo-journaly: false
 #todo: add conf event source
 
 service-config:

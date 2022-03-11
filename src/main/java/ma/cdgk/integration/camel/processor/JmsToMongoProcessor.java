@@ -1,12 +1,10 @@
 package ma.cdgk.integration.camel.processor;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.cloudevents.CloudEventData;
-import io.cloudevents.core.data.BytesCloudEventData;
 import io.cloudevents.core.v1.CloudEventV1;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import lombok.extern.slf4j.Slf4j;
+import ma.cdgk.integration.camel.util.Utils;
 import ma.cdgk.integration.common.QueueTopicPair;
 import ma.cdgk.integration.common.SourceDestinationConfig;
 import org.apache.camel.Exchange;
@@ -31,9 +29,11 @@ public class JmsToMongoProcessor implements org.apache.camel.Processor {
         ActiveMQQueueEndpoint queueEndpoint = (ActiveMQQueueEndpoint) exchange.getFromEndpoint();
         queueTopicPair = getQueueTopicPairFromQueName(queueEndpoint.getDestinationName());
         CloudEventV1 paylod = exchange.getIn().getBody(CloudEventV1.class);
-//        Object event = new ObjectMapper().readValue(paylod.getData().toBytes(), Object.class);
-        Object event = deserializeCloudEventData(queueTopicPair.getTopic(),paylod.getData());
-        exchange.getIn().setBody(new ObjectMapper().convertValue(event., Map.class));//todo: correct exception here
+        Object event = Utils.deserializeCloudEventData(queueTopicPair.getTopic(),paylod.getData(),schemaRegistryUrl);
+        Map<String, Object> payload =
+                new ObjectMapper().readValue(
+                        event.toString(), new TypeReference<HashMap<String, Object>>() {});
+        exchange.getIn().setBody(payload);
     }
 
     QueueTopicPair getQueueTopicPairFromQueName(String queueName){
@@ -42,13 +42,5 @@ public class JmsToMongoProcessor implements org.apache.camel.Processor {
                 .filter(queueTopicPair -> queueName.equals(queueTopicPair.getQueue()))
                 .findFirst().orElse(null);
     }
-    private Object deserializeCloudEventData(String topic, CloudEventData cloudEventData) {
-        BytesCloudEventData bytesCloudEventData = (BytesCloudEventData) cloudEventData;
-        Map<String, Object> config = new HashMap<>();
-        config.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-        config.put(AbstractKafkaAvroSerDeConfig.AUTO_REGISTER_SCHEMAS, true);
-        KafkaAvroDeserializer avroDeserializer = new KafkaAvroDeserializer();
-        avroDeserializer.configure(config, false);
-        return avroDeserializer.deserialize(topic, bytesCloudEventData.toBytes());
-    }
+
 }

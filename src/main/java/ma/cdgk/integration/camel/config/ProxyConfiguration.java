@@ -2,6 +2,8 @@ package ma.cdgk.integration.camel.config;
 
 import ma.cdgk.integration.camel.processor.JmsToKafkaProcessor;
 import ma.cdgk.integration.camel.processor.JmsToMongoProcessor;
+import ma.cdgk.integration.camel.processor.KafkaToJmsProcessor;
+import ma.cdgk.integration.camel.processor.KafkaToMongoProcessor;
 import ma.cdgk.integration.common.SourceDestinationConfig;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
 import org.apache.camel.Processor;
@@ -19,7 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 @EnableJms
-public class JmsConsumerConfiguration {
+public class ProxyConfiguration {
 
     @Value("${artemis.broker-url}")
     private String brokerUrl;
@@ -67,6 +69,16 @@ public class JmsConsumerConfiguration {
     @Bean
     public Processor jmsToMongoProcessor(){
          return new JmsToMongoProcessor(sourceDestinationConfig,schemaRegistryUrl);
+    }
+
+    @Bean
+    public Processor kafkaToJmsProcessor(){
+         return new KafkaToJmsProcessor(applicationContext, sourceDestinationConfig ,schemaRegistryUrl);
+    }
+
+    @Bean
+    public Processor kafkaToMongoProcessor(){
+         return new KafkaToMongoProcessor(sourceDestinationConfig,schemaRegistryUrl);
     }
 
 }

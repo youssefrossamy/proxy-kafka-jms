@@ -1,4 +1,4 @@
-package ma.cdgk.integration.eventNormalizer;
+package ma.cdgk.integration.normalizer;
 
 public interface EventNormalizer<T, R> {
 

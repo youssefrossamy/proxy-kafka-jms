@@ -12,6 +12,8 @@ public class QueueTopicPair {
     private String queueMappingClass;
     private String sourceSysteme;
     private String normalizer;
+    private String jsonMapper;
+    private String xmlMapper;
     private String destinationSource;
     private String mongoJournaly;
 }
