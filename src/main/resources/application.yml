@@ -61,7 +61,7 @@ source-destination-config:
   jmsToKafkaQueueTopicPairs:
     - queue: jsonSourceQueue
       topic: topic1FromJsonSourceQueue
-      queueFormat: xml
+      queueFormat: json
       queueMappingClass: ma.cdgk.integration.model.Event #Eventjson
       normalizer: ma.cdgk.integration.normalizer.AmortissementCreditNormalizer
       topicFormat: CloudEvent #tjr
@@ -74,13 +74,13 @@ source-destination-config:
   kafkaToJmsQueueTopicPairs:
     - topic: topic1FromJsonSourceQueue
       queue: jsonReceiverQueue
-      queueFormat: json #xml
+      queueFormat: xml
       #queueMappingClass: ma.cdk.inetgartion.calypso.domain.Amortissement
       queueMappingClass: ma.cdgk.domain.events.bancaire.AmortissementCreditEvent
       topicFormat: CloudEvent
       topicMappingClass: ma.cdgk.domain.events.bancaire.AmortissementCreditEvent
       xmlMapper: ma.cdgk.integration.camel.mapping.MapAmortissementCreditEventToXmlAmortissement
-      jsonMapper: ma.cdgk.integration.camel.mapping.MapAmortissementCreditEventToAmortissement
+      jsonMapper: ma.cdgk.integration.camel.mapping.MapAmortissementCreditEventToJsonAmortissement #not implmented yet
       source-systeme: oly
       destination-source: calypso
       mongo-journaly: false

@@ -27,7 +27,7 @@ public class KafkaToMongoProcessor implements org.apache.camel.Processor {
     @Override
     public void process(Exchange exchange) throws Exception {
         CloudEventV1 paylod = exchange.getIn().getBody(CloudEventV1.class);
-        String topicName = (String) exchange.getIn().getHeader("kafka.TOPIC");
+        String topicName = (String) exchange.getIn().getHeader(Utils.KAFKA_TOPIC_HEADER_NAME);
         queueTopicPair = Utils.getQueueTopicPairFromConfig(
                 sourceDestinationConfig.getKafkaToJmsQueueTopicPairs(),
                 queueTopicPair -> topicName.equals(queueTopicPair.getTopic()));

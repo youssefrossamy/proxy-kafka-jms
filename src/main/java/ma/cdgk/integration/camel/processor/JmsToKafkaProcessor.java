@@ -19,7 +19,7 @@ import java.util.UUID;
 
 public class JmsToKafkaProcessor implements org.apache.camel.Processor  {
 
-    public static final String APPLICATION_JSON = "application/json";
+    public static final String APPLICATION_AVRO = "application/avro";
     private SourceDestinationConfig sourceDestinationConfig ;
     private ApplicationContext applicationContext ;
     private QueueTopicPair queueTopicPair;
@@ -43,21 +43,20 @@ public class JmsToKafkaProcessor implements org.apache.camel.Processor  {
         ActiveMQQueueEndpoint queueEndpoint = (ActiveMQQueueEndpoint) exchange.getFromEndpoint();
         queueTopicPair = getQueueTopicPairFromQueName(queueEndpoint.getDestinationName());
         Class clazz = Class.forName(queueTopicPair.getQueueMappingClass());
-//        Object body = exchange.getIn().getBody(clazz);
         Object body = new ObjectMapper().convertValue(exchange.getIn().getBody() , clazz);
-        if ("CloudEvent".equals(queueTopicPair.getTopicFormat())) {
+        if (Utils.TopicFormat.CLOUD_EVENT.getFormatName().equals(queueTopicPair.getTopicFormat())) {
             EventNormalizer normalizer = getNormaliser();
             Object object = normalizer.normalize(body);
             BytesCloudEventData bytesCloudEventData = BytesCloudEventData
                     .wrap(
                             Utils.serializeCloudEventData(object , schemaRegistryUrl , queueTopicPair.getTopic()));
-            exchange.getMessage().setHeader("content-type", "application/avro" );
+            exchange.getMessage().setHeader("content-type", APPLICATION_AVRO);
             CloudEvent event = CloudEventBuilder.v1()
-                    .withId(UUID.randomUUID().toString())//RANDOM ID
-                    .withType(object.getClass().getName()) //should not be Object ?? queueTopicPair.getQueueMappingClass()
-                    .withSource(URI.create("http://localhost"))
+                    .withId(UUID.randomUUID().toString())//todo : what value should be injected : RANDOM ID
+                    .withType(object.getClass().getName())
+                    .withSource(URI.create("http://localhost"))// todo : what value should be injected
                     .withTime(OffsetDateTime.now())
-                    .withDataContentType("application/avro") // "application/avro"
+                    .withDataContentType(APPLICATION_AVRO)
                     .withData(bytesCloudEventData)
                     .build();
             exchange.getIn().setBody(event);

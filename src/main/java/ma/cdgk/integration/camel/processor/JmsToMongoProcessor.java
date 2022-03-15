@@ -27,20 +27,17 @@ public class JmsToMongoProcessor implements org.apache.camel.Processor {
     @Override
     public void process(Exchange exchange) throws Exception {
         ActiveMQQueueEndpoint queueEndpoint = (ActiveMQQueueEndpoint) exchange.getFromEndpoint();
-        queueTopicPair = getQueueTopicPairFromQueName(queueEndpoint.getDestinationName());
-        CloudEventV1 paylod = exchange.getIn().getBody(CloudEventV1.class);
-        Object event = Utils.deserializeCloudEventData(queueTopicPair.getTopic(),paylod.getData(),schemaRegistryUrl);
-        Map<String, Object> payload =
+        queueTopicPair = Utils.getQueueTopicPairFromConfig(
+                sourceDestinationConfig.getJmsToKafkaQueueTopicPairs(),
+                queueTopicPair -> queueEndpoint.getDestinationName().equals(queueTopicPair.getQueue()));
+        CloudEventV1 payload = exchange.getIn().getBody(CloudEventV1.class);
+        Object event = Utils.deserializeCloudEventData(queueTopicPair.getTopic(), payload.getData(), schemaRegistryUrl);
+        Map<String, Object> body =
                 new ObjectMapper().readValue(
-                        event.toString(), new TypeReference<HashMap<String, Object>>() {});
-        exchange.getIn().setBody(payload);
+                        event.toString(), new TypeReference<HashMap<String, Object>>() {
+                        });
+        exchange.getIn().setBody(body);
     }
 
-    QueueTopicPair getQueueTopicPairFromQueName(String queueName){
-        return sourceDestinationConfig.getJmsToKafkaQueueTopicPairs()
-                .stream()
-                .filter(queueTopicPair -> queueName.equals(queueTopicPair.getQueue()))
-                .findFirst().orElse(null);
-    }
 
 }

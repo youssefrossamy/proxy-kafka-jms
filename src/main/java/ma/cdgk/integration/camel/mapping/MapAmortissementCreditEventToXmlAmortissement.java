@@ -2,7 +2,6 @@ package ma.cdgk.integration.camel.mapping;
 
 import ma.cdgk.domain.events.bancaire.AmortissementCreditEvent;
 import ma.cdk.inetgartion.calypso.domain.Amortissement;
-import org.apache.kafka.common.record.ConvertedRecords;
 import org.springframework.stereotype.Service;
 
 @Service

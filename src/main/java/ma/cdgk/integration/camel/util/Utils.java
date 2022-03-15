@@ -5,8 +5,9 @@ import io.cloudevents.core.data.BytesCloudEventData;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import ma.cdgk.integration.common.QueueTopicPair;
-import ma.cdgk.integration.common.SourceDestinationConfig;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +18,17 @@ public class Utils {
 
     public static final String XML_FORMAT = "xml";
     public static final String JSON_FORMAT = "json";
+    public static final String KAFKA_TOPIC_HEADER_NAME = "kafka.TOPIC";
+    public static final String JMS_DELIVERY_MODE = "JMSDeliveryMode";
+
+    @AllArgsConstructor
+    @Getter
+    public enum TopicFormat{
+        CLOUD_EVENT ("CloudEvent"),
+        JSON("Json");
+        private String formatName;
+
+    }
 
     public static Object deserializeCloudEventData(String topic, CloudEventData cloudEventData , String schemaRegistryUrl) {
         BytesCloudEventData bytesCloudEventData = (BytesCloudEventData) cloudEventData;

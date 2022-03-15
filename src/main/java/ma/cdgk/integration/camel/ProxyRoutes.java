@@ -1,6 +1,5 @@
 package ma.cdgk.integration.camel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ma.cdgk.integration.camel.processor.JmsToKafkaProcessor;
 import ma.cdgk.integration.camel.util.Utils;
 import ma.cdgk.integration.common.MongoConfig;
@@ -22,7 +21,6 @@ import org.springframework.stereotype.Component;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 @Component
 public class ProxyRoutes extends RouteBuilder {
@@ -39,7 +37,7 @@ public class ProxyRoutes extends RouteBuilder {
     }
 
     @Override
-    public void configure() throws JAXBException {
+    public void configure() {
         routesErrorHandler();
         jmsToKafkaRoutes();
         JmsToMongoRoute();
@@ -65,7 +63,7 @@ public class ProxyRoutes extends RouteBuilder {
                 .maximumRedeliveries(RedeliveryPolicy.NO_MAXIMUM_REDELIVERIES));
     }
 
-    private void jmsToKafkaRoutes() throws JAXBException {
+    private void jmsToKafkaRoutes(){
         sourceDestinationConfig.getJmsToKafkaQueueTopicPairs()
                 .forEach(queueTopicPair -> {
                     from("activemq:" + queueTopicPair.getQueue())
@@ -90,7 +88,6 @@ public class ProxyRoutes extends RouteBuilder {
                             .description("Use this route when the headers contain a header property called test with the value true")
                                 .log(LoggingLevel.INFO, "JSON :: Start Processing message from queue - " + queueTopicPair.getQueue() + " - into topic -" + queueTopicPair.getTopic()+"- for data: \n ${body}")
                                 .unmarshal().json(JsonLibrary.Jackson ,Object.class)
-                                .removeHeaders("JMS*")
                                 .process("jmsToKafkaProcessor")
                                     // activate to test activemq resilience : tested
 //                                    .process(exchange -> {
@@ -111,7 +108,7 @@ public class ProxyRoutes extends RouteBuilder {
         );
     }
 
-    private void kafkaToJmsRoutes() throws JAXBException {
+    private void kafkaToJmsRoutes() {
         AvroDataFormat avroDataFormat = new AvroDataFormat();
         avroDataFormat.getDataFormat();
         sourceDestinationConfig.getKafkaToJmsQueueTopicPairs().forEach(queueTopicPair ->
@@ -136,9 +133,10 @@ public class ProxyRoutes extends RouteBuilder {
                                         .marshal(avroDataFormat)
                                     .endChoice()
                                     .otherwise()
-                                        .log(LoggingLevel.INFO, "!!!!!!!!!!!!!!! No route provided for marshal non known format !!!!!!!!!!!!!!! : " )
+                                        .log(LoggingLevel.INFO, "!!!!!!!!!!!!!!! No case provided for marshal unknown format !!!!!!!!!!!!!!! : " )
                                     .endChoice()
                                 .end()
+                                .removeHeaders("KAFKA*")
                                 .to("activemq:" + queueTopicPair.getQueue())
                                 .transacted()
                                 // activate to test activemq resilience :
@@ -164,7 +162,7 @@ public class ProxyRoutes extends RouteBuilder {
     private void kafkaToMongoRoute(){
         LOGGER.info("kafka to mongo route");
               from("direct:kafkaToMongo" )
-                      .routeId("from kafka to event store")
+                      .routeId("From kafka to event store")
                         .log(LoggingLevel.INFO, "Journalization: Start Processing message into event store  for data: \n ${body}")
                       .process("kafkaToMongoProcessor")
                       // activate to test KAFKA resilience : tested
@@ -217,12 +215,4 @@ public class ProxyRoutes extends RouteBuilder {
         return jaxb;
     }
 
-
-    private String getQueuesNamesByFormat(String format) {
-        return sourceDestinationConfig.getJmsToKafkaQueueTopicPairs()
-                .stream()
-                .map(queueTopicPair -> queueTopicPair.getQueue())
-                .filter(s -> s.toLowerCase().contains(format.toLowerCase()))
-                .collect(Collectors.joining(","));
-    }
 }
