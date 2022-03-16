@@ -35,8 +35,8 @@ public class KafkaToJmsProcessor implements org.apache.camel.Processor {
         String topicName = (String) exchange.getIn().getHeader(Utils.KAFKA_TOPIC_HEADER_NAME);
         queueTopicPair = Utils.getQueueTopicPairFromConfig(
                 sourceDestinationConfig.getKafkaToJmsQueueTopicPairs(),
-                queueTopicPair -> topicName.equals(queueTopicPair.getTopic()));
-        Class eventClass = Class.forName(queueTopicPair.getTopicMappingClass());
+                qtp -> topicName.equals(qtp.getTopic()));
+        Class<?> eventClass = Class.forName(queueTopicPair.getTopicMappingClass());
         Object event = new ObjectMapper().readValue(
                 Utils.deserializeCloudEventData(queueTopicPair.getTopic(), paylod.getData(), schemaRegistryUrl).toString()
                 , eventClass);
@@ -55,13 +55,13 @@ public class KafkaToJmsProcessor implements org.apache.camel.Processor {
         if (Utils.XML_FORMAT.equals(queueTopicPair.getQueueFormat())) {
             return queueTopicPair.getXmlMapper();
 //TODO: activate when an implementation of mapper to json object is provided
-//        } else  if (Utils.JSON_FORMAT.equals(queueTopicPair.getQueueFormat())) {
-//            return queueTopicPair.getJsonMapper();
+/*        } else  if (Utils.JSON_FORMAT.equals(queueTopicPair.getQueueFormat())) {
+            return queueTopicPair.getJsonMapper();*/
         }
         return null;
     }
 
-    private EventMapping getMapper(String mappingClassName) throws ClassNotFoundException {
+    private EventMapping<Object,Object> getMapper(String mappingClassName) throws ClassNotFoundException {
         return (EventMapping) applicationContext.getBean(Class.forName(mappingClassName));
     }
 

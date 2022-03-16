@@ -1,17 +1,20 @@
 package ma.cdgk.integration.camel.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cloudevents.CloudEventData;
 import io.cloudevents.core.data.BytesCloudEventData;
+import io.cloudevents.core.v1.CloudEventV1;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import ma.cdgk.integration.camel.mongoevent.MongoEvent;
 import ma.cdgk.integration.common.QueueTopicPair;
+import org.bson.types.ObjectId;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class Utils {
@@ -28,6 +31,14 @@ public class Utils {
         JSON("Json");
         private String formatName;
 
+    }
+
+    @AllArgsConstructor
+    @Getter
+    public enum Routes{
+        KAFKA("kafka"),
+        ACTIVE_MQ("activemq");
+        private String routeName;
     }
 
     public static Object deserializeCloudEventData(String topic, CloudEventData cloudEventData , String schemaRegistryUrl) {

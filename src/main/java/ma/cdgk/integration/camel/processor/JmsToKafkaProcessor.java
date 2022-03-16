@@ -34,7 +34,7 @@ public class JmsToKafkaProcessor implements org.apache.camel.Processor  {
     QueueTopicPair getQueueTopicPairFromQueName(String queueName){
         return sourceDestinationConfig.getJmsToKafkaQueueTopicPairs()
                 .stream()
-                .filter(queueTopicPair -> queueName.equals(queueTopicPair.getQueue()))
+                .filter(qTPair -> queueName.equals(qTPair.getQueue()))
                 .findFirst().orElse(null);
     }
 
@@ -42,10 +42,10 @@ public class JmsToKafkaProcessor implements org.apache.camel.Processor  {
     public void process(Exchange exchange) throws Exception {
         ActiveMQQueueEndpoint queueEndpoint = (ActiveMQQueueEndpoint) exchange.getFromEndpoint();
         queueTopicPair = getQueueTopicPairFromQueName(queueEndpoint.getDestinationName());
-        Class clazz = Class.forName(queueTopicPair.getQueueMappingClass());
+        Class<?> clazz = Class.forName(queueTopicPair.getQueueMappingClass());
         Object body = new ObjectMapper().convertValue(exchange.getIn().getBody() , clazz);
         if (Utils.TopicFormat.CLOUD_EVENT.getFormatName().equals(queueTopicPair.getTopicFormat())) {
-            EventNormalizer normalizer = getNormaliser();
+            EventNormalizer<Object ,Object> normalizer = getNormaliser();
             Object object = normalizer.normalize(body);
             BytesCloudEventData bytesCloudEventData = BytesCloudEventData
                     .wrap(
@@ -63,8 +63,8 @@ public class JmsToKafkaProcessor implements org.apache.camel.Processor  {
         }
     }
 
-    private EventNormalizer getNormaliser() throws ClassNotFoundException {
-        return (EventNormalizer) applicationContext.getBean(Class.forName(queueTopicPair.getNormalizer()));
+    private EventNormalizer<Object ,Object> getNormaliser() throws ClassNotFoundException {
+        return (EventNormalizer<Object ,Object>) applicationContext.getBean(Class.forName(queueTopicPair.getNormalizer()));
     }
 
 }

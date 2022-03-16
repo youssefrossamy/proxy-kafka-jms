@@ -7,8 +7,6 @@ import ma.cdgk.integration.camel.processor.KafkaToMongoProcessor;
 import ma.cdgk.integration.common.SourceDestinationConfig;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
 import org.apache.camel.Processor;
-import org.apache.camel.component.kafka.springboot.KafkaComponentConfiguration;
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
